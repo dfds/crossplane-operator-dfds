@@ -20,7 +20,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	rbac "k8s.io/api/rbac/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,11 +78,11 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Detect annotation
 	labelIsPresent := len(namespace.Annotations[namespaceCapabilityNameLabel]) > 0
 
-	clusterRole := &rbac.ClusterRole{
+	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "providerconfig-" + namespace.Name,
 		},
-		Rules: []rbac.PolicyRule{
+		Rules: []rbacv1.PolicyRule{
 			{
 				Verbs:         []string{"get"},
 				APIGroups:     []string{"aws.crossplane.io"},
@@ -92,18 +92,18 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
-	clusterRoleBinding := &rbac.ClusterRoleBinding{
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "providerconfig-" + namespace.Name,
 		},
-		Subjects: []rbac.Subject{
+		Subjects: []rbacv1.Subject{
 			{
 				APIGroup: "rbac.authorization.k8s.io",
 				Kind:     "Group",
 				Name:     namespace.Name,
 			},
 		},
-		RoleRef: rbac.RoleRef{
+		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
 			Name:     clusterRole.Name,
