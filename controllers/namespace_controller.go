@@ -47,6 +47,9 @@ type NamespaceReconciler struct {
 //+kubebuilder:rbac:groups=rbac,resources=clusterroles,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac,resources=clusterroles/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=rbac,resources=clusterroles/finalizers,verbs=update
+//+kubebuilder:rbac:groups=rbac,resources=clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac,resources=clusterrolebindings/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=rbac,resources=clusterrolebindings/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -89,7 +92,26 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
+	clusterRoleBinding := &rbac.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "providerconfig-" + namespace.Name,
+		},
+		Subjects: []rbac.Subject{
+			{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "Group",
+				Name:     namespace.Name,
+			},
+		},
+		RoleRef: rbac.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     clusterRole.Name,
+		},
+	}
+
 	if labelIsPresent {
+
 		log.Log.Info("Capability detected on namespace " + namespace.Name)
 		controllerutil.SetControllerReference(&namespace, clusterRole, r.Scheme)
 
@@ -105,17 +127,39 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				} else {
 					log.Log.Info("ClusterRole " + clusterRole.Name + " for " + namespace.Name + " has been updated")
 				}
-				return ctrl.Result{}, nil
+				err = nil
 			}
-			log.Log.Info("Unable to make ClusterRole " + clusterRole.Name + " for " + namespace.Name)
+			if err != nil {
+				log.Log.Info("Unable to make ClusterRole " + clusterRole.Name + " for " + namespace.Name)
+			}
 			return ctrl.Result{}, err
 		} else {
 			log.Log.Info("ClusterRole " + clusterRole.Name + " created for " + namespace.Name)
 		}
 
 		// Create clusterrolebinding if not exists
+		if err := r.Create(ctx, clusterRoleBinding); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				log.Log.Info("ClusterRoleBinding " + clusterRoleBinding.Name + " already exists for " + namespace.Name)
 
+				// Update clusterrolebinding in case of changes
+				// TODO: Check if currently deployed clusterrolebinding matches clusterrolebindnig to deploy before applying update
+				if err := r.Update(ctx, clusterRoleBinding); err != nil {
+					log.Log.Info("Unable to update clusterrolebinding " + clusterRoleBinding.Name + " for " + namespace.Name)
+				} else {
+					log.Log.Info("ClusterRoleBinding " + clusterRoleBinding.Name + " for " + namespace.Name + " has been updated")
+				}
+				err = nil
+			}
+			if err != nil {
+				log.Log.Info("Unable to make ClusterRoleBinding " + clusterRoleBinding.Name + " for " + namespace.Name)
+			}
+			return ctrl.Result{}, err
+		} else {
+			log.Log.Info("ClusterRoleBinding " + clusterRoleBinding.Name + " created for " + namespace.Name)
+		}
 		// Create providerconfig if not exists
+		return ctrl.Result{}, nil
 
 	} else {
 		log.Log.Info("Capability not detected on namespace " + namespace.Name)
@@ -124,15 +168,27 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.Delete(ctx, clusterRole); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				log.Log.Info("ClusterRole does not exist")
-				return ctrl.Result{}, nil
+				// return ctrl.Result{}, nil
+				err = nil
+			} else {
+				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
 		} else {
 			log.Log.Info("ClusterRole deleted")
 		}
 
 		// Delete clusterrolebinding if exists
-
+		if err := r.Delete(ctx, clusterRoleBinding); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				log.Log.Info("ClusterRoleBinding does not exist")
+				// return ctrl.Result{}, nil
+				err = nil
+			} else {
+				return ctrl.Result{}, err
+			}
+		} else {
+			log.Log.Info("ClusterRoleBinding deleted")
+		}
 		// Delete providerconfig if exists
 
 	}
