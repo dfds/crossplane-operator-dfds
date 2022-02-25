@@ -6,6 +6,32 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - aws.crossplane.io
+  resources:
+  - providerconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - aws.crossplane.io
+  resources:
+  - providerconfigs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - aws.crossplane.io
+  resources:
+  - providerconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - ""
   resources:
   - namespaces
