@@ -168,9 +168,11 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.Delete(ctx, clusterRole); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				log.Log.Info("ClusterRole does not exist")
-				return ctrl.Result{}, nil
+				// return ctrl.Result{}, nil
+				err = nil
+			} else {
+				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
 		} else {
 			log.Log.Info("ClusterRole deleted")
 		}
@@ -179,9 +181,11 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.Delete(ctx, clusterRoleBinding); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				log.Log.Info("ClusterRoleBinding does not exist")
-				return ctrl.Result{}, nil
+				// return ctrl.Result{}, nil
+				err = nil
+			} else {
+				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
 		} else {
 			log.Log.Info("ClusterRoleBinding deleted")
 		}
