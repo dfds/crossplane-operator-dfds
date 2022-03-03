@@ -100,6 +100,8 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		awsAccountId = namespace.Annotations[getAWSAccountIDAnnotationName]
 	}
 
+	//configMap := getConfigMap("DFDS_CROSSPLANE_CONFIGMAP_NAME", "DFDS_CROSSPLANE_CONFIGMAP_NAMESPACE")
+
 	// TODO: Obtain this clusterrole info from a Configmap or other source, rather than hard code
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -137,7 +139,7 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// TODO: We need to obtain this roleArn. Currently namespaces are not annotated with AWS Account ID
 	// so we may need to query the capability service to get them which is not ideal. It would be good
 	// if we could annotate namespaces on creation
-	roleArn := awsAccountId
+	roleArn := "arn:aws:iam::" + awsAccountId + ":role/provider-aws"
 
 	// TODO: Obtain this providerconfig info from a Configmap or other source, rather than hard code
 	providerAWS := &provideraws.ProviderConfig{
@@ -326,3 +328,15 @@ func getAnnotationEnvVarName(envVarName string, defaultVarName string) (string, 
 	}
 	return annotation, nil
 }
+
+// func getConfigMap(configMapNameEnvVar string, configMapNamespaceEnvVar string) corev1.ConfigMap {
+// 	configMapNameEnvVar, found := os.LookupEnv(configMapNameEnvVar)
+// 	if !found {
+
+// 	}
+
+// 	configMapNamespaceEnvVar, found := os.LookupEnv(configMapNamespaceEnvVar)
+// 	if !found {
+
+// 	}
+// }
