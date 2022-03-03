@@ -139,7 +139,7 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// TODO: We need to obtain this roleArn. Currently namespaces are not annotated with AWS Account ID
 	// so we may need to query the capability service to get them which is not ideal. It would be good
 	// if we could annotate namespaces on creation
-	roleArn := "arn:aws:iam::" + awsAccountId + ":role/provider-aws"
+	roleArn := "arn:aws:iam::" + awsAccountId + ":role/crossplane-deploy"
 
 	// TODO: Obtain this providerconfig info from a Configmap or other source, rather than hard code
 	providerAWS := &provideraws.ProviderConfig{
