@@ -105,7 +105,7 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// TODO: Obtain this clusterrole info from a Configmap or other source, rather than hard code
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "providerconfig-" + namespace.Name,
+			Name: namespace.Name + "-aws",
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -120,7 +120,7 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// TODO: Obtain this clusterrolebinding info from a Configmap or other source, rather than hard code
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "providerconfig-" + namespace.Name,
+			Name: namespace.Name + "-aws",
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -144,7 +144,7 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// TODO: Obtain this providerconfig info from a Configmap or other source, rather than hard code
 	providerAWS := &provideraws.ProviderConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "" + namespace.Name + "-aws",
+			Name: namespace.Name + "-aws",
 		},
 		Spec: provideraws.ProviderConfigSpec{
 			Credentials: provideraws.ProviderCredentials{
