@@ -444,6 +444,11 @@ func getDFDSCrossplaneAPIGroups(envVarName string, defaultValues []string) ([]st
 	}
 
 	s := strings.Split(groups, ",")
+
+	for count, item := range s {
+		s[count] = strings.TrimSpace(item)
+	}
+
 	return s, nil
 
 }
