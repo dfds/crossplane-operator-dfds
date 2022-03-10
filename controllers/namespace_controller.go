@@ -178,7 +178,7 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			{
 				APIGroup: "rbac.authorization.k8s.io",
 				Kind:     "Group",
-				Name:     role.Name,
+				Name:     namespace.Name,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
