@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"os"
+	"strings"
 
 	provideraws "github.com/crossplane/provider-aws/apis/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -100,8 +101,6 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		awsAccountId = namespace.Annotations[getAWSAccountIDAnnotationName]
 	}
 
-	//configMap := getConfigMap("DFDS_CROSSPLANE_CONFIGMAP_NAME", "DFDS_CROSSPLANE_CONFIGMAP_NAMESPACE")
-
 	// TODO: Obtain this clusterrole info from a Configmap or other source, rather than hard code
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -136,9 +135,6 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
-	// TODO: We need to obtain this roleArn. Currently namespaces are not annotated with AWS Account ID
-	// so we may need to query the capability service to get them which is not ideal. It would be good
-	// if we could annotate namespaces on creation
 	roleArn := "arn:aws:iam::" + awsAccountId + ":role/crossplane-deploy"
 
 	// TODO: Obtain this providerconfig info from a Configmap or other source, rather than hard code
@@ -154,6 +150,44 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 	}
 
+	allowedAPIGroups, err := getDFDSCrossplaneAPIGroups("DFDS_CROSSPLANE_PKG_ALLOWED_API_GROUPS", []string{"xplane.dfds.cloud"})
+	if err != nil {
+		log.Log.Error(err, "unable to get API Groups")
+	}
+
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namespace.Name + "-dfds-xplane-cfg-pkg",
+			Namespace: namespace.Name,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				Verbs:     []string{"*"},
+				APIGroups: allowedAPIGroups,
+				Resources: []string{"*"},
+			},
+		},
+	}
+
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namespace.Name + "-dfds-xplane-cfg-pkg",
+			Namespace: namespace.Name,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "Group",
+				Name:     namespace.Name,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     role.Name,
+		},
+	}
+
 	if crossplaneEnabled == "true" {
 
 		log.Log.Info("Detected Crossplane enabled on namespace " + namespace.Name)
@@ -164,6 +198,8 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			controllerutil.SetControllerReference(&namespace, clusterRole, r.Scheme)
 			controllerutil.SetControllerReference(&namespace, clusterRoleBinding, r.Scheme)
 			controllerutil.SetControllerReference(&namespace, providerAWS, r.Scheme)
+			controllerutil.SetControllerReference(&namespace, role, r.Scheme)
+			controllerutil.SetControllerReference(&namespace, roleBinding, r.Scheme)
 
 			// Create clusterrole if not exists
 			if err := r.Create(ctx, clusterRole); err != nil {
@@ -262,6 +298,50 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			} else {
 				log.Log.Info("ProviderConfig " + providerAWS.Name + " created for " + namespace.Name)
 			}
+
+			// Create role if not exists
+			if err := r.Create(ctx, role); err != nil {
+				if apierrors.IsAlreadyExists(err) {
+					log.Log.Info("role " + role.Name + " already exists for " + namespace.Name)
+
+					// Update role in case of changes
+					// TODO: Check if currently deployed role matches role to deploy before applying update
+					if err := r.Update(ctx, role); err != nil {
+						log.Log.Info("Unable to update role " + role.Name + " for " + namespace.Name)
+					} else {
+						log.Log.Info("role " + role.Name + " for " + namespace.Name + " has been updated")
+					}
+					err = nil
+				}
+				if err != nil {
+					log.Log.Info("Unable to make role " + role.Name + " for " + namespace.Name)
+					return ctrl.Result{}, err
+				}
+			} else {
+				log.Log.Info("role " + role.Name + " created for " + namespace.Name)
+			}
+
+			// Create rolebinding if not exists
+			if err := r.Create(ctx, roleBinding); err != nil {
+				if apierrors.IsAlreadyExists(err) {
+					log.Log.Info("roleBinding " + roleBinding.Name + " already exists for " + namespace.Name)
+
+					// Update roleBinding in case of changes
+					// TODO: Check if currently deployed roleBinding matches clusterrolebindnig to deploy before applying update
+					if err := r.Update(ctx, roleBinding); err != nil {
+						log.Log.Info("Unable to update roleBinding " + roleBinding.Name + " for " + namespace.Name)
+					} else {
+						log.Log.Info("roleBinding " + roleBinding.Name + " for " + namespace.Name + " has been updated")
+					}
+					err = nil
+				}
+				if err != nil {
+					log.Log.Info("Unable to make roleBinding " + roleBinding.Name + " for " + namespace.Name)
+					return ctrl.Result{}, err
+				}
+			} else {
+				log.Log.Info("roleBinding " + roleBinding.Name + " created for " + namespace.Name)
+			}
 		}
 
 		return ctrl.Result{}, nil
@@ -308,6 +388,32 @@ func (r *NamespaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Log.Info("ProviderConfig deleted")
 		}
 
+		// Delete role if exists
+		if err := r.Delete(ctx, role); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				log.Log.Info("role does not exist")
+				// return ctrl.Result{}, nil
+				err = nil
+			} else {
+				return ctrl.Result{}, err
+			}
+		} else {
+			log.Log.Info("role deleted")
+		}
+
+		// Delete roleBinding if exists
+		if err := r.Delete(ctx, roleBinding); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				log.Log.Info("roleBinding does not exist")
+				// return ctrl.Result{}, nil
+				err = nil
+			} else {
+				return ctrl.Result{}, err
+			}
+		} else {
+			log.Log.Info("roleBinding deleted")
+		}
+
 	}
 
 	return ctrl.Result{}, nil
@@ -329,14 +435,20 @@ func getAnnotationEnvVarName(envVarName string, defaultVarName string) (string, 
 	return annotation, nil
 }
 
-// func getConfigMap(configMapNameEnvVar string, configMapNamespaceEnvVar string) corev1.ConfigMap {
-// 	configMapNameEnvVar, found := os.LookupEnv(configMapNameEnvVar)
-// 	if !found {
+func getDFDSCrossplaneAPIGroups(envVarName string, defaultValues []string) ([]string, error) {
+	groups, found := os.LookupEnv(envVarName)
 
-// 	}
+	if !found {
+		ctrl.Log.Info("No " + envVarName + " environment variable set. Using default value of " + strings.Join(defaultValues, ", "))
+		return defaultValues, nil
+	}
 
-// 	configMapNamespaceEnvVar, found := os.LookupEnv(configMapNamespaceEnvVar)
-// 	if !found {
+	s := strings.Split(groups, ",")
 
-// 	}
-// }
+	for count, item := range s {
+		s[count] = strings.TrimSpace(item)
+	}
+
+	return s, nil
+
+}
