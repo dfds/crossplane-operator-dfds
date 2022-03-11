@@ -109,3 +109,55 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - rbac
+  resources:
+  - rolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac
+  resources:
+  - rolebindings/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - rbac
+  resources:
+  - rolebindings/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - rbac
+  resources:
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac
+  resources:
+  - roles/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - rbac
+  resources:
+  - roles/status
+  verbs:
+  - get
+  - patch
+  - update
