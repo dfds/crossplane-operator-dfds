@@ -48,6 +48,12 @@ type NamespaceReconciler struct {
 //+kubebuilder:rbac:groups=rbac,resources=clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac,resources=clusterrolebindings/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=rbac,resources=clusterrolebindings/finalizers,verbs=update
+//+kubebuilder:rbac:groups=rbac,resources=roles,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac,resources=roles/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=rbac,resources=roles/finalizers,verbs=update
+//+kubebuilder:rbac:groups=rbac,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac,resources=rolebindings/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=rbac,resources=rolebindings/finalizers,verbs=update
 //+kubebuilder:rbac:groups=aws.crossplane.io,resources=providerconfigs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=aws.crossplane.io,resources=providerconfigs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=aws.crossplane.io,resources=providerconfigs/finalizers,verbs=update
