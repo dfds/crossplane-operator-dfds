@@ -1,3 +1,12 @@
+# :warning: Repository not maintained :warning:
+
+Please note that this repository is currently archived, and is no longer being maintained.
+
+- It may contain code, or reference dependencies, with known vulnerabilities
+- It may contain out-dated advice, how-to's or other forms of documentation
+
+The contents might still serve as a source of inspiration, but please review any contents before reusing elsewhere.
+
 # Crossplane Operator DFDS
 A Kubernetes [operator](https://sdk.operatorframework.io/) to support the Crossplane implementation in DFDS.
 
